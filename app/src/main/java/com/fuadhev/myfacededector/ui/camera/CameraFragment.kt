@@ -1,5 +1,8 @@
 package com.fuadhev.myfacededector.ui.camera
 
+import android.os.CountDownTimer
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.OptIn
@@ -12,12 +15,16 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.fuadhev.myfacededector.common.base.BaseFragment
+import com.fuadhev.myfacededector.common.utils.CurrentTest
 import com.fuadhev.myfacededector.databinding.FragmentCameraBinding
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -27,12 +34,62 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
     private lateinit var cameraExecutor: ExecutorService
     private val viewModel by viewModels<CameraViewModel>()
 
+    private var countDownTimer: CountDownTimer? = null
     override fun observeEvents() {
+        lifecycleScope.launch {
+            viewModel.currentTest.collectLatest {
+                binding.txtTest.text = it.testName
+                countDownTimer?.cancel()
+                setTimer(it.test)
+            }
+        }
 
     }
 
-    override fun onCreateFinish() {
+    private fun setTimer(currentTest: CurrentTest) {
 
+        val totalMillis = 11000L
+        val intervalMillis = 1000L
+        countDownTimer = object : CountDownTimer(totalMillis, intervalMillis) {
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsRemaining = millisUntilFinished / 1000
+                binding.txtTime.text = secondsRemaining.toString()
+            }
+
+            override fun onFinish() {
+                when (currentTest) {
+                    CurrentTest.LEFT -> {
+                        viewModel.updateCurrentTest(
+                            CurrentTestState(
+                                "Head to Right",
+                                CurrentTest.RIGHT
+                            )
+                        )
+                    }
+
+                    CurrentTest.RIGHT -> {
+                        viewModel.updateCurrentTest(CurrentTestState("Smile", CurrentTest.SMILE))
+                    }
+
+                    CurrentTest.SMILE -> {
+                        viewModel.updateCurrentTest(
+                            CurrentTestState(
+                                "Neutral",
+                                CurrentTest.NEUTRAL
+                            )
+                        )
+                    }
+
+                    CurrentTest.NEUTRAL -> {
+
+                    }
+                }
+            }
+        }
+        (countDownTimer as CountDownTimer).start()
+    }
+
+    override fun onCreateFinish() {
         startCamera(binding.preview)
     }
 
@@ -61,7 +118,12 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
                     }
                 }
 
-            cameraProvider.bindToLifecycle(viewLifecycleOwner, cameraSelector, preview, imageAnalysis)
+            cameraProvider.bindToLifecycle(
+                viewLifecycleOwner,
+                cameraSelector,
+                preview,
+                imageAnalysis
+            )
 
         }, ContextCompat.getMainExecutor(requireContext()))
 
@@ -85,12 +147,10 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
 
             faceDetector.process(image)
                 .addOnSuccessListener { faces ->
+                    if (faces.size > 0) {
+                        viewModel.setTestResult(faces[0])
+                    }
                     Log.e("face", "Yüz ${faces.size} yüz bulundu.")
-
-                    viewModel.getTestResult(faces[0])
-                    //for (face in faces) {
-
-                   // }
                 }
                 .addOnFailureListener { e ->
                     Log.e("FaceDetection", "Yüz tespiti başarısız", e)

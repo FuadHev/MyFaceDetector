@@ -6,8 +6,8 @@ enum class CurrentTest(val currentTest: String){
     SMILE("SMILE"),
     NEUTRAL("NEUTRAL");
 
-    companion object {
-        fun from(value: String) =
-            values().find { it.currentTest.lowercase() == value.lowercase() }
-    }
+//    companion object {
+//        fun from(value: String) =
+//            values().find { it.currentTest.lowercase() == value.lowercase() }
+//    }
 }
