@@ -51,7 +51,7 @@ dependencies {
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     val navVersion = "2.7.4"
     val lifecycleVersion = "2.6.1"
-    val roomVersion = "2.6.0"
+    val roomVersion = "2.6.1"
 
     //Navigation Components
     implementation("androidx.navigation:navigation-fragment-ktx:$navVersion")
@@ -97,7 +97,7 @@ dependencies {
     //Coil
     implementation("io.coil-kt:coil:2.2.1")
     //Room
-    implementation("androidx.room:room-ktx:$roomVersion")
+    implementation("androidx.room:room-ktx:2.6.1")
     implementation("androidx.room:room-runtime:$roomVersion")
     annotationProcessor("androidx.room:room-compiler:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")

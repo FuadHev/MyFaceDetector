@@ -2,17 +2,26 @@ package com.fuadhev.myfacededector.ui.camera
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.fuadhev.myfacededector.common.utils.CurrentTest
 import com.fuadhev.myfacededector.data.local.Result
+import com.fuadhev.myfacededector.data.local.ResultDB
+import com.fuadhev.myfacededector.data.local.ResultDao
+import com.fuadhev.myfacededector.repository.Repository
 import com.google.mlkit.vision.face.Face
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 
-class CameraViewModel : ViewModel() {
+@HiltViewModel
+class CameraViewModel @Inject constructor(val repo: Repository) : ViewModel() {
 
     private val _currentTest = MutableStateFlow(CurrentTestState("Head to Left", CurrentTest.LEFT))
     val currentTest = _currentTest.asStateFlow()
+
 //    private val allTests = listOf(
 //        CurrentTestState("Head to Left", CurrentTest.LEFT),
 //        CurrentTestState("Head to Right", CurrentTest.RIGHT),
@@ -20,14 +29,12 @@ class CameraViewModel : ViewModel() {
 //        CurrentTestState("Neutral", CurrentTest.NEUTRAL),
 //    )
 
-
-
     fun updateCurrentTest(currentTestState: CurrentTestState) {
         _currentTest.value = currentTestState
     }
 
-    companion object{
-        val result=Result(1)
+    companion object {
+        var result = Result(0)
     }
 
     fun setTestResult(face: Face) {
@@ -40,7 +47,7 @@ class CameraViewModel : ViewModel() {
             CurrentTest.LEFT -> {
                 if (head.toInt() > 20) {
                     Log.e("FaceDetection", "Kafa sola döndü")
-                    result.left=true
+                    result.left = true
                     _currentTest.value = CurrentTestState("Head to Right", CurrentTest.RIGHT)
                 }
             }
@@ -48,14 +55,14 @@ class CameraViewModel : ViewModel() {
             CurrentTest.RIGHT -> {
                 if (head.toInt() < -20) {
                     Log.e("FaceDetection", "Kafa saga döndü")
-                    result.right=true
+                    result.right = true
                     _currentTest.value = CurrentTestState("Smile", CurrentTest.SMILE)
                 }
             }
 
             CurrentTest.SMILE -> {
                 if (smilingProbability!! > 0.7) {
-                    result.smile=true
+                    result.smile = true
                     Log.e("FaceDetection", "Gülüyor")
                     _currentTest.value = CurrentTestState("Neutral", CurrentTest.NEUTRAL)
                 }
@@ -64,26 +71,22 @@ class CameraViewModel : ViewModel() {
             CurrentTest.NEUTRAL -> {
                 if (smilingProbability!! < 0.7) {
                     Log.e("FaceDetection", "Gülmüyor")
-                    result.neutral=true
+                    result.neutral = true
+                    insertResult()
                     _currentTest.value = CurrentTestState("Head to Left", CurrentTest.LEFT)
+                    result=Result(0)
                 }
+
             }
+
         }
 
-//        if (head.toInt() > 10) {
-//            Log.e("FaceDetection", "Kafa sola döndü")
-//        } else if (head.toInt() < -10) {
-//            Log.e("FaceDetection", "Kafa saga döndü")
-//        } else {
-//            Log.e("FaceDetection", "Gülmüyor ve Kafa düz")
-//        }
-//        if (smilingProbability != null) {
-//            if (smilingProbability > 0.7) {
-//                Log.e("FaceDetection", "Gülüyor")
-//            } else {
-//                Log.e("FaceDetection", "Gülmüyor")
-//            }
-//        }
+    }
 
+
+    fun insertResult() {
+        viewModelScope.launch {
+            repo.insertResult(result)
+        }
     }
 }

@@ -1,10 +1,7 @@
 package com.fuadhev.myfacededector.ui.camera
 
 import android.os.CountDownTimer
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -20,9 +17,12 @@ import com.fuadhev.myfacededector.common.base.BaseFragment
 import com.fuadhev.myfacededector.common.utils.CurrentTest
 import com.fuadhev.myfacededector.databinding.FragmentCameraBinding
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
@@ -35,7 +35,9 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
     private val viewModel by viewModels<CameraViewModel>()
 
     private var countDownTimer: CountDownTimer? = null
+
     override fun observeEvents() {
+
         lifecycleScope.launch {
             viewModel.currentTest.collectLatest {
                 binding.txtTest.text = it.testName
@@ -81,7 +83,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
                     }
 
                     CurrentTest.NEUTRAL -> {
-
+                        viewModel.insertResult()
                     }
                 }
             }
@@ -90,6 +92,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
     }
 
     override fun onCreateFinish() {
+
         startCamera(binding.preview)
     }
 
@@ -112,9 +115,16 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
                 .build()
-                .also {
+                .also { it ->
                     it.setAnalyzer(cameraExecutor) { imageProxy ->
-                        proxyProgress(imageProxy)
+                        lifecycleScope.launch {
+                            imageProxy.proxyProcess().collectLatest {face->
+                                Log.e("TAG", "startCamera: $face", )
+                                viewModel.setTestResult(face)
+                            }
+                        }
+
+//                        proxyProgress(imageProxy)
                     }
                 }
 
@@ -161,8 +171,44 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        cameraExecutor.shutdown()
+//    override fun onDestroy() {
+//        super.onDestroy()
+//        cameraExecutor.shutdown()
+//    }
+}
+
+@OptIn(ExperimentalGetImage::class)
+fun ImageProxy.proxyProcess() = callbackFlow<Face> {
+    val mediaImage = this@proxyProcess.image
+    if (mediaImage != null) {
+        val image = InputImage.fromMediaImage(
+            mediaImage,
+            this@proxyProcess.imageInfo.rotationDegrees
+        )
+
+        val options = FaceDetectorOptions.Builder()
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+            .build()
+
+        val faceDetector = FaceDetection.getClient(options)
+
+        faceDetector.process(image)
+            .addOnSuccessListener { faces ->
+                if (faces.size > 0) {
+                    trySend(faces[0])
+                }
+                Log.e("face", "Yüz ${faces.size} yüz bulundu.")
+            }
+            .addOnFailureListener { e ->
+                Log.e("FaceDetection", "Yüz tespiti başarısız", e)
+            }
+            .addOnCompleteListener {
+                this@proxyProcess.close()
+            }
+        awaitClose {
+            this@proxyProcess.close()
+        }
     }
+
+
 }
