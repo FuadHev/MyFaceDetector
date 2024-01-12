@@ -1,6 +1,6 @@
 package com.fuadhev.myfacededector.common.utils
 
-enum class CurrentTest(val currentTest: String){
+enum class FaceTestType(val testType: String){
     LEFT("LEFT"),
     RIGHT("RIGHT"),
     SMILE("SMILE"),

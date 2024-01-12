@@ -2,6 +2,9 @@ package com.fuadhev.myfacededector.ui.camera
 
 import android.os.CountDownTimer
 import android.util.Log
+import android.view.View
+import android.view.View.GONE
+import android.view.View.VISIBLE
 import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -11,10 +14,10 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.fuadhev.myfacededector.common.base.BaseFragment
-import com.fuadhev.myfacededector.common.utils.CurrentTest
 import com.fuadhev.myfacededector.databinding.FragmentCameraBinding
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
@@ -39,16 +42,27 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
     override fun observeEvents() {
 
         lifecycleScope.launch {
-            viewModel.currentTest.collectLatest {
+            viewModel.faceTestType.collectLatest {
                 binding.txtTest.text = it.testName
                 countDownTimer?.cancel()
-                setTimer(it.test)
+                setTimer()
+            }
+            viewModel.successTest.collectLatest {
+                Log.e("success", "observeEvents: $it", )
+                if (it){
+                    binding.viewSuccess.visibility=VISIBLE
+
+                }else{
+                    binding.viewSuccess.visibility=GONE
+
+                }
             }
         }
 
+
     }
 
-    private fun setTimer(currentTest: CurrentTest) {
+    private fun setTimer() {
 
         val totalMillis = 11000L
         val intervalMillis = 1000L
@@ -59,40 +73,14 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
             }
 
             override fun onFinish() {
-                when (currentTest) {
-                    CurrentTest.LEFT -> {
-                        viewModel.updateCurrentTest(
-                            CurrentTestState(
-                                "Head to Right",
-                                CurrentTest.RIGHT
-                            )
-                        )
-                    }
 
-                    CurrentTest.RIGHT -> {
-                        viewModel.updateCurrentTest(CurrentTestState("Smile", CurrentTest.SMILE))
-                    }
-
-                    CurrentTest.SMILE -> {
-                        viewModel.updateCurrentTest(
-                            CurrentTestState(
-                                "Neutral",
-                                CurrentTest.NEUTRAL
-                            )
-                        )
-                    }
-
-                    CurrentTest.NEUTRAL -> {
-                        viewModel.insertResult()
-                    }
-                }
+                viewModel.updateTestIndexOrInsert()
             }
         }
         (countDownTimer as CountDownTimer).start()
     }
 
     override fun onCreateFinish() {
-
         startCamera(binding.preview)
     }
 
@@ -118,8 +106,8 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
                 .also { it ->
                     it.setAnalyzer(cameraExecutor) { imageProxy ->
                         lifecycleScope.launch {
-                            imageProxy.proxyProcess().collectLatest {face->
-                                Log.e("TAG", "startCamera: $face", )
+                            imageProxy.proxyProcess().collectLatest { face ->
+                                Log.e("TAG", "startCamera: $face")
                                 viewModel.setTestResult(face)
                             }
                         }
@@ -140,41 +128,41 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
-    @OptIn(ExperimentalGetImage::class)
-    private fun proxyProgress(imageProxy: ImageProxy) {
-        val mediaImage = imageProxy.image
-        if (mediaImage != null) {
-            val image = InputImage.fromMediaImage(
-                mediaImage,
-                imageProxy.imageInfo.rotationDegrees
-            )
-
-            val options = FaceDetectorOptions.Builder()
-                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-                .build()
-
-            val faceDetector = FaceDetection.getClient(options)
-
-            faceDetector.process(image)
-                .addOnSuccessListener { faces ->
-                    if (faces.size > 0) {
-                        viewModel.setTestResult(faces[0])
-                    }
-                    Log.e("face", "Yüz ${faces.size} yüz bulundu.")
-                }
-                .addOnFailureListener { e ->
-                    Log.e("FaceDetection", "Yüz tespiti başarısız", e)
-                }
-                .addOnCompleteListener {
-                    imageProxy.close()
-                }
-        }
-    }
-
-//    override fun onDestroy() {
-//        super.onDestroy()
-//        cameraExecutor.shutdown()
+//    @OptIn(ExperimentalGetImage::class)
+//    private fun proxyProgress(imageProxy: ImageProxy) {
+//        val mediaImage = imageProxy.image
+//        if (mediaImage != null) {
+//            val image = InputImage.fromMediaImage(
+//                mediaImage,
+//                imageProxy.imageInfo.rotationDegrees
+//            )
+//
+//            val options = FaceDetectorOptions.Builder()
+//                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+//                .build()
+//
+//            val faceDetector = FaceDetection.getClient(options)
+//
+//            faceDetector.process(image)
+//                .addOnSuccessListener { faces ->
+//                    if (faces.size > 0) {
+//                        viewModel.setTestResult(faces[0])
+//                    }
+//                    Log.e("face", "Yüz ${faces.size} yüz bulundu.")
+//                }
+//                .addOnFailureListener { e ->
+//                    Log.e("FaceDetection", "Yüz tespiti başarısız", e)
+//                }
+//                .addOnCompleteListener {
+//                    imageProxy.close()
+//                }
+//        }
 //    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
+    }
 }
 
 @OptIn(ExperimentalGetImage::class)
