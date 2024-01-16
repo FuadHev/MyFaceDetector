@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.fuadhev.myfacededector.data.local.ResultDB
 import com.fuadhev.myfacededector.data.local.ResultDao
-import com.fuadhev.myfacededector.repository.Repository
+import com.fuadhev.myfacededector.data.local.Repository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,6 +31,6 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideRepository(db:ResultDao):Repository=Repository(db)
+    fun provideRepository(db:ResultDao): Repository = Repository(db)
 
 }

@@ -1,4 +1,4 @@
-package com.fuadhev.myfacededector.repository
+package com.fuadhev.myfacededector.data.local
 
 import com.fuadhev.myfacededector.data.local.Result
 import com.fuadhev.myfacededector.data.local.ResultDao

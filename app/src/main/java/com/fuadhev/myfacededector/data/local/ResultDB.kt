@@ -8,4 +8,7 @@ abstract class ResultDB:RoomDatabase() {
 
     abstract fun getResultDao():ResultDao
 
+
+
+
 }

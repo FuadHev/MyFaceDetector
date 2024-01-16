@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.fuadhev.myfacededector.common.base.BaseFragment
 import com.fuadhev.myfacededector.databinding.FragmentCameraBinding
 import com.google.mlkit.vision.common.InputImage
@@ -47,14 +48,11 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
                 countDownTimer?.cancel()
                 setTimer()
             }
-            viewModel.successTest.collectLatest {
-                Log.e("success", "observeEvents: $it", )
+        }
+        lifecycleScope.launch {
+            viewModel.isEndTest.collectLatest {
                 if (it){
-                    binding.viewSuccess.visibility=VISIBLE
-
-                }else{
-                    binding.viewSuccess.visibility=GONE
-
+                    findNavController().popBackStack()
                 }
             }
         }
@@ -64,7 +62,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
 
     private fun setTimer() {
 
-        val totalMillis = 11000L
+        val totalMillis = 8000L
         val intervalMillis = 1000L
         countDownTimer = object : CountDownTimer(totalMillis, intervalMillis) {
             override fun onTick(millisUntilFinished: Long) {
@@ -73,7 +71,6 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
             }
 
             override fun onFinish() {
-
                 viewModel.updateTestIndexOrInsert()
             }
         }
@@ -112,7 +109,6 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(FragmentCameraBinding
                             }
                         }
 
-//                        proxyProgress(imageProxy)
                     }
                 }
 
